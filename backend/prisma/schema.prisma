@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -7,6 +6,47 @@ generator client {
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
+}
+model Funcionario {
+  id        Int       @id @default(autoincrement())
+  nome      String
+  email     String    @unique
+  senha     String
+  pedidos   Pedido[]  
+  criadoEm  DateTime  @default(now())
+}
+
+model Cliente {
+  id        Int       @id @default(autoincrement())
+  nome      String
+  email     String    @unique
+  pedidos   Pedido[]  
+  criadoEm  DateTime  @default(now())
+}
+
+model Pedido {
+  id            Int         @id @default(autoincrement())
+  descricao     String
+  status        Status      @default(PENDENTE)
+  cliente       Cliente     @relation(fields: [clienteId], references: [id])
+  clienteId     Int
+  funcionario   Funcionario? @relation(fields: [funcionarioId], references: [id])
+  funcionarioId Int?
+  criadoEm      DateTime    @default(now())
+}
+
+model Produto {
+  id          Int       @id @default(autoincrement())
+  nome        String
+  preco       Float
+  descricao   String?
+  criadoEm    DateTime  @default(now())
+}
+
+enum Status {
+  PENDENTE
+  ACEITO
+  RECUSADO
 }
 
 model Gestor {
