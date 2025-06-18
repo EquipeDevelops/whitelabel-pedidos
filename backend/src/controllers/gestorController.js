@@ -108,3 +108,44 @@ export const deletarGestor = async (req, res) => {
     console.error("Erro ao deletar gestor: ", error);
   }
 };
+
+export const loginGestor = async (req, res) => {
+  const { email, senha } = req.body;
+
+  if (!email || !senha) {
+    return res.status(400).json({ error: "Preencha todos os campos." });
+  }
+
+  try {
+    const gestor = await prisma.gestor.findUnique({ where: { email } });
+
+    if (!gestor) {
+      return res.status(404).json({ error: "Gestor não encontrado." });
+    }
+
+    const senhaValida = await bcrypt.compare(senha, gestor.senha);
+
+    if (!senhaValida) {
+      return res.status(401).json({ error: "Senha incorreta." });
+    }
+
+    const token = jwt.sign(
+      { id: gestor.id, tipo: "gestor", nome: gestor.nome },
+      process.env.JWT_SECRET,
+      { expiresIn: "4h" }
+    );
+
+    res.json({
+      token,
+      gestor: {
+        id: gestor.id,
+        nome: gestor.nome,
+        email: gestor.email,
+        tipo: "gestor",
+      },
+    });
+  } catch (error) {
+    console.error("Erro ao fazer login do gestor: ", error);
+    res.status(500).json({ error: "Erro ao fazer login do gestor" });
+  }
+};

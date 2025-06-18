@@ -5,6 +5,7 @@ import {
   criarGestor,
   atualizarGestor,
   deletarGestor,
+  loginGestor,
 } from "../controllers/gestorController.js";
 
 const router = express.Router();
@@ -14,6 +15,7 @@ const router = express.Router();
 router.get("/gestor", listarGestores);
 router.get("/gestor/:id", buscarGestorPorId);
 router.post("/gestor", criarGestor);
+router.post("/gestor/login", loginGestor);
 router.put("/gestor/:id", atualizarGestor);
 router.delete("/gestor/:id", deletarGestor);
 
