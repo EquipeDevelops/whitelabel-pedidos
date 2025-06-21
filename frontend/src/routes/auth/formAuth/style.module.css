@@ -1,0 +1,123 @@
+.mainContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40%;
+}
+
+.mainContainer > div {
+  background-color: var(--whiteColor);
+  padding: 30px 40px;
+  border-radius: 10px;
+  border: 1px solid var(--borderColor);
+  box-shadow: var(--boxShadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 550px;
+}
+
+.changeMethodButtons {
+  display: flex;
+  gap: 25px;
+}
+
+.changeMethodButtons button {
+  font-size: 1rem;
+  padding: 10px;
+  font-weight: 500;
+  color: var(--inativeTextColor);
+  background-color: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.changeMethodButtons button:hover::before {
+  content: ' ';
+  background-color: var(--inativeTextColor);
+  width: 100%;
+  height: 3px;
+  border-radius: 3px;
+  left: 0px;
+  bottom: 0px;
+  position: absolute;
+}
+
+.changeMethodButtons button.active {
+  color: var(--blackColor);
+}
+
+.changeMethodButtons button.active::before {
+  content: ' ';
+  background-color: var(--mainColor);
+  width: 100%;
+  height: 3px;
+  border-radius: 3px;
+  left: 0px;
+  bottom: 0px;
+  position: absolute;
+}
+
+.mainContainer > div form {
+  display: flex;
+  flex-direction: column;
+}
+
+.mainContainer > div form h2 {
+  margin-top: 30px;
+  margin-bottom: 50px;
+  text-align: center;
+  font-size: 2.3rem;
+  font-weight: 600;
+}
+
+.mainContainer > div form label {
+  font-size: 1.1rem;
+  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+.mainContainer > div form label input {
+  border: 1px solid var(--borderColor);
+  padding: 10px;
+  border-radius: 10px;
+  transition: all .2s ease;
+}
+
+.mainContainer > div form label input:focus {
+  border: 1px solid var(--mainColor);
+  box-shadow: 0px 0px 2px 1px #f8897d;
+  outline: none;
+}
+
+.mainContainer > div form label input:hover {
+  border-color: var(--mainColor);
+}
+
+.mainContainer > div form button {
+  padding: 10px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  background-color: var(--mainColor);
+  color: var(--whiteColor);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all .2s ease;
+  margin-top: 10px;
+}
+
+.mainContainer > div form button:hover {
+  background-color: var(--mainSoftColor);
+}
+
+.mainContainer > div form a {
+  margin-top: 40px;
+  text-align: center;
+  font-size: .9rem;
+  color: var(--linkColor);
+  text-decoration: none;
+}
