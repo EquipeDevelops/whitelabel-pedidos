@@ -1,6 +1,11 @@
-function App() {
+import DashboardGestor from "./admin/page/DashboardGestor";
 
-  return <p>Teste</p>
+function App() {
+  return (
+    <div>
+      <DashboardGestor />
+    </div>
+  );
 }
 
-export default App
+export default App;
