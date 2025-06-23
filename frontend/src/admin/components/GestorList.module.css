@@ -1,17 +1,335 @@
-.listContainer {
-  margin-top: 32px;
+:root {
+  --avatar-size: 90px;
 }
+
+.listContainer {
+  padding: 2rem;
+  background-color: var(--c-background-page);
+  font-family: var(--font-sans);
+  color: var(--c-text-body);
+  line-height: var(--lh-base);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 1.75rem;
+  color: var(--c-text-header);
+}
+
+.searchInput {
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--c-border);
+  border-radius: var(--border-radius-md);
+  font-size: 1rem;
+  max-width: 300px;
+  background-color: var(--c-background-component);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.searchInput:focus {
+  border-color: var(--c-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--c-focus-ring);
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 12px;
+  background-color: var(--c-background-component);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
 }
-th,
-td {
-  border: 1px solid #eee;
-  padding: 8px 12px;
+
+.table th,
+.table td {
+  padding: 0.9rem 1rem;
   text-align: left;
+  border-bottom: 1px solid var(--c-border);
+  font-size: 0.95rem;
 }
-th {
-  background: #f5f5f5;
+
+.table th {
+  background-color: var(--c-primary-light);
+  color: var(--c-text-header);
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+}
+
+.table tbody tr:hover {
+  background-color: #f1f5f9;
+}
+
+.avatarColumn {
+  width: var(--avatar-size);
+}
+
+.avatarImage {
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  object-fit: cover;
+  border-radius: var(--border-radius-md);
+  border: 2px solid var(--c-border);
+  transition: transform var(--transition);
+}
+
+.avatarImage:hover {
+  transform: scale(1.05);
+}
+
+.statusAtivo {
+  background-color: var(--c-success-light);
+  color: var(--c-success);
+  border: 1px solid var(--c-success);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--border-radius-sm);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.statusInativo {
+  background-color: var(--c-danger-light);
+  color: var(--c-danger);
+  border: 1px solid var(--c-danger);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--border-radius-sm);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.actionsCell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.actionsCell button {
+  padding: 0.4rem 0.7rem;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background-color var(--transition), transform var(--transition);
+  cursor: pointer;
+}
+
+.actionsCell button:hover {
+  transform: scale(1.02);
+}
+
+.editBtn {
+  background-color: var(--c-primary);
+  color: white;
+}
+
+.editBtn:hover {
+  background-color: var(--c-primary-hover);
+}
+
+.deleteBtn {
+  background-color: var(--c-danger);
+  color: white;
+}
+
+.deleteBtn:hover {
+  background-color: var(--c-danger-hover);
+}
+
+.resetBtn {
+  background-color: var(--c-warning);
+  color: white;
+}
+
+.resetBtn:hover {
+  background-color: var(--c-warning-hover);
+}
+
+.activateBtn {
+  background-color: var(--c-success);
+  color: white;
+}
+
+.activateBtn:hover {
+  background-color: var(--c-success-hover);
+}
+
+.deactivateBtn {
+  background-color: var(--c-text-secondary);
+  color: white;
+}
+
+.deactivateBtn:hover {
+  background-color: #4b5563;
+}
+
+.pagination {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pagination button {
+  padding: 0.5rem 1.2rem;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.95rem;
+  background-color: var(--c-primary);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition);
+}
+
+.pagination button:hover:not(:disabled) {
+  background-color: var(--c-primary-hover);
+}
+
+.pagination button:disabled {
+  background-color: var(--c-border);
+  cursor: not-allowed;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(17, 24, 39, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  z-index: 1000;
+}
+
+.editForm,
+.passwordModal {
+  background-color: var(--c-background-component);
+  padding: 2rem;
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 480px;
+}
+
+.editForm h3,
+.passwordModal h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: var(--c-text-header);
+}
+
+.editForm input {
+  display: block;
+  width: 100%;
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.8rem;
+  font-size: 1rem;
+  border: 1px solid var(--c-border);
+  border-radius: var(--border-radius-md);
+  background-color: #fff;
+}
+
+.editForm input:focus {
+  border-color: var(--c-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--c-focus-ring);
+}
+
+.avatarUpload {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.avatarPreview {
+  width: 120px;
+  height: 120px;
+  background-color: #f3f4f6;
+  border-radius: var(--border-radius-md);
+  border: 2px dashed var(--c-border);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  overflow: hidden;
+  color: var(--c-text-secondary);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.avatarPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.modalActions button {
+  flex: 1;
+  padding: 0.7rem;
+  font-size: 1rem;
+  border-radius: var(--border-radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition);
+}
+
+.modalActions button[type="submit"] {
+  background-color: var(--c-success);
+  color: white;
+}
+
+.modalActions button[type="submit"]:hover {
+  background-color: var(--c-success-hover);
+}
+
+.modalActions button[type="button"] {
+  background-color: var(--c-text-secondary);
+  color: white;
+}
+
+.modalActions button[type="button"]:hover {
+  background-color: #4b5563;
+}
+
+.passwordModal p {
+  margin-bottom: 0.8rem;
+}
+
+.newPasswordBox {
+  font-size: 1.2rem;
+  font-weight: 600;
+  background-color: var(--c-primary-light);
+  padding: 0.6rem;
+  text-align: center;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--c-border);
+  margin: 0.5rem 0;
+  word-break: break-word;
+  color: var(--c-text-body);
+}
+
+.passwordWarning {
+  font-size: 0.85rem;
+  color: var(--c-danger-hover);
+  text-align: center;
+  margin-top: 0.5rem;
 }
