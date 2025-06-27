@@ -1,0 +1,17 @@
+.containerPage {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.containerImg {
+  height: 700px;
+  width: 100%;
+  max-width: 700px;
+  background-color: var(--mainColor);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--whiteColor);
+}
