@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Container, Typography, Button, Box } from "@mui/material";
+import { Typography, Button, Box } from "@mui/material";
 import { Add as AddIcon } from "@mui/icons-material";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -40,46 +40,41 @@ export default function DashboardGestor() {
     <>
       <ToastContainer
         position="top-right"
-        autoClose={5000}
+        autoClose={3000}
         hideProgressBar={false}
         theme="colored"
       />
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 4,
-          }}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 4,
+        }}
+      >
+        <Typography variant="h4" component="h1">
+          Gestores
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => handleOpenForm()}
         >
-          <Typography variant="h4" component="h1">
-            Gerenciamento de Gestores
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenForm()}
-          >
-            Cadastrar Gestor
-          </Button>
-        </Box>
-
-        <GestorStats />
-
-        <GestorList
-          refreshKey={refreshKey}
-          onEdit={handleOpenForm}
-          onActionComplete={handleSuccess}
-        />
-
-        <GestorForm
-          open={isFormOpen}
-          onClose={handleCloseForm}
-          onSuccess={handleSuccess}
-          gestorToEdit={gestorToEdit}
-        />
-      </Container>
+          Novo Gestor
+        </Button>
+      </Box>
+      <GestorStats />
+      <GestorList
+        refreshKey={refreshKey}
+        onEdit={handleOpenForm}
+        onActionComplete={handleSuccess}
+      />
+      <GestorForm
+        open={isFormOpen}
+        onClose={handleCloseForm}
+        onSuccess={handleSuccess}
+        gestorToEdit={gestorToEdit}
+      />
     </>
   );
 }
