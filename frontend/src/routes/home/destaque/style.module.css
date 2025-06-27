@@ -1,0 +1,46 @@
+.containerMain {
+  display: flex;
+  justify-content: space-between;
+}
+
+.containerImg {
+  background-color: var(--mainSoftColor);
+  width: 100%;
+  max-width: 500px;
+  height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--whiteColor);
+  border-radius: 10px;
+}
+
+.containerContent {
+  max-width: 650px;
+}
+
+.containerContent h2 {
+  font-size: 1.2em;
+  text-transform: uppercase;
+  color: var(--mainColor);
+  font-weight: 600;
+
+}
+
+.containerContent h1 {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.containerContent p {
+  font-size: 1rem;
+  margin-bottom: 20px;
+}
+
+.containerContent button {
+  font-size: 1.2rem;
+  background-color: var(--mainColor);
+  padding: 10px 20px;
+  border-radius: 10px;
+  color: var(--whiteColor);
+}

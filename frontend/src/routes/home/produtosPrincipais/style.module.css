@@ -1,0 +1,99 @@
+.containerMain {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.containerTitles h2 {
+  font-size: 1.2em;
+  text-transform: uppercase;
+  color: var(--mainColor);
+  font-weight: 600;
+}
+
+.containerTitles h1 {
+  font-size: 2rem;
+  position: relative;
+}
+
+.containerTitles h1::before {
+  position: absolute;
+  content: '';
+  width: 10%;
+  border-radius: 3px;
+  height: 3px;
+  background-color: var(--mainColor);
+  bottom: -2px;
+}
+
+.productsList {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  list-style: none;
+}
+
+.productsList li {
+  background-color: var(--whiteColor);
+  padding: 20px;
+  border-radius: 10px;
+  border: 2px dashed var(--mainColor);
+  box-shadow: var(--boxShadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  transition: all .2s ease;
+}
+
+.productsList li h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.productsList li p:nth-child(2) {
+  text-align: center;
+  font-size: .9rem;
+  max-width: 220px;
+}
+
+.productsList li p:nth-child(3) {
+  font-size: 2rem;
+  color: var(--mainColor);
+  font-weight: 600;
+}
+
+.productsList li button {
+  font-size: 1.1rem;
+  padding: 5px 10px;
+  border-radius: 10px;
+  background-color: var(--secundaryColor);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.productsList li div {
+  background-color: var(--mainSoftColor);
+  width: 200px;
+  height: 200px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--whiteColor);
+}
+
+.productsList li:hover {
+  background-color: var(--mainColor);
+  border-color: var(--whiteColor);
+  box-shadow: 0px 0px 10px 2px var(--mainSoftColor);
+}
+
+.productsList li:hover p,
+.productsList li:hover h3 {
+  color: var(--whiteColor);
+}
+

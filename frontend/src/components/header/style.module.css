@@ -1,0 +1,58 @@
+.containerMain {
+  display: flex;
+  margin: 0px 60px;
+  justify-content: space-between;
+  align-items: center;
+  height: 60px;
+}
+
+.logo {
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.linksNav {
+  display: flex;
+  list-style: none;
+  gap: 10px;
+}
+
+.linksNav li a {
+  padding: 5px 10px;
+  font-size: 1rem;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all .2s ease;
+}
+
+.linksNav li a:hover {
+  color: var(--mainColor);
+}
+
+.linksAuth {
+  display: flex;
+  gap: 10px;
+  list-style: none;
+}
+
+.linksAuth li a {
+  font-size: 1rem;
+  text-decoration: none;
+  padding: 5px 10px;
+  transition: all .2s ease;
+  font-weight: 500;
+}
+
+.linksAuth li:nth-child(2) a {
+  background-color: var(--mainColor);
+  border-radius: 5px;
+  color: var(--whiteColor)
+}
+
+.linksAuth li:nth-child(2) a:hover {
+  background-color: var(--mainSoftColor);
+}
+
+.linksAuth li:nth-child(1) a:hover {
+  color: var(--mainColor);
+}
