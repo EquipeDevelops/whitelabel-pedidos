@@ -1,384 +1,749 @@
-import React, { useEffect, useState, useRef } from "react";
-import styles from "./GestorList.module.css";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Box,
+  Paper,
+  TextField,
+  InputAdornment,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  TableSortLabel,
+  TablePagination,
+  Avatar,
+  Chip,
+  IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Typography,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Button,
+  ToggleButton,
+  ToggleButtonGroup,
+  Toolbar,
+  Tooltip,
+  Checkbox,
+} from "@mui/material";
+import {
+  Timeline,
+  TimelineItem,
+  TimelineSeparator,
+  TimelineConnector,
+  TimelineContent,
+  TimelineOppositeContent,
+  TimelineDot,
+} from "@mui/lab";
+import {
+  Search as SearchIcon,
+  MoreVert as MoreVertIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  LockReset as LockResetIcon,
+  ToggleOn as ToggleOnIcon,
+  ToggleOff as ToggleOffIcon,
+  Person as PersonIcon,
+  DeleteSweep as DeleteSweepIcon,
+  History as HistoryIcon,
+  Summarize as SummarizeIcon,
+} from "@mui/icons-material";
 import { toast } from "react-toastify";
+import { alpha } from "@mui/material/styles";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { fetchWithAuth } from "../../api/api";
 
-type Gestor = {
-  id: number;
-  nome: string;
-  email: string;
-  createdAt: string;
-  ativo: boolean;
-  avatarUrl?: string;
-};
+const SERVER_URL = "http://localhost:3001";
 
-interface GestorListProps {
-  refresh: boolean;
-  onAction: () => void;
-}
-
-export default function GestorList({ refresh, onAction }: GestorListProps) {
-  const [gestores, setGestores] = useState<Gestor[]>([]);
+export default function GestorList({ refreshKey, onEdit, onActionComplete }) {
+  const [gestores, setGestores] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [totalRows, setTotalRows] = useState(0);
+  const [order, setOrder] = useState("desc");
+  const [orderBy, setOrderBy] = useState("createdAt");
   const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [sortConfig, setSortConfig] = useState({
-    key: "createdAt",
-    direction: "desc",
+  const [statusFilter, setStatusFilter] = useState("todos");
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedGestor, setSelectedGestor] = useState(null);
+  const [dialogState, setDialogState] = useState({
+    open: false,
+    type: null,
+    data: null,
+  });
+  const [newPasswordInfo, setNewPasswordInfo] = useState({
+    open: false,
+    nome: "",
+    pass: "",
+  });
+  const [activityLogState, setActivityLogState] = useState({
+    open: false,
+    loading: false,
+    logs: [],
+    gestorName: "",
   });
 
-  const [newPasswordInfo, setNewPasswordInfo] = useState<{
-    gestorNome: string;
-    pass: string;
-  } | null>(null);
-
-  const [editGestor, setEditGestor] = useState<Gestor | null>(null);
-  const [editNome, setEditNome] = useState("");
-  const [editEmail, setEditEmail] = useState("");
-  const [editSenha, setEditSenha] = useState("");
-  const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null);
-  const [editPreview, setEditPreview] = useState<string | null>(null);
-  const editFileInputRef = useRef<HTMLInputElement>(null);
-
-  const serverUrl = "http://localhost:3001";
-
-  useEffect(() => {
+  const fetchGestores = useCallback(() => {
     setLoading(true);
     const params = new URLSearchParams({
-      page: String(currentPage),
-      search: search,
-      sortBy: sortConfig.key,
-      sortOrder: sortConfig.direction,
+      page: String(page + 1),
+      limit: String(rowsPerPage),
+      search,
+      sortBy: orderBy,
+      sortOrder: order,
     });
-
-    fetch(`/api/gestor?${params.toString()}`)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Falha na resposta da rede");
-        }
-        return res.json();
-      })
+    if (statusFilter !== "todos") {
+      params.append("status", statusFilter);
+    }
+    fetchWithAuth(`/api/gestor?${params.toString()}`)
+      .then((res) => res.json())
       .then((data) => {
+        if (data.error) throw new Error(data.error);
         setGestores(data.data || []);
-        setTotalPages(data.totalPages || 1);
-        setCurrentPage(data.currentPage || 1);
+        setTotalRows(data.totalGestores || 0);
       })
-      .catch(() => {
-        toast.error("Falha ao carregar gestores.");
-      })
-      .finally(() => {
-        setLoading(false);
+      .catch(() => toast.error("Falha ao carregar gestores."))
+      .finally(() => setLoading(false));
+  }, [page, rowsPerPage, search, orderBy, order, statusFilter]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchGestores();
+      setSelectedIds([]);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [fetchGestores, refreshKey]);
+
+  const handleGenerateReport = async () => {
+    if (!selectedGestor) return;
+    const gestorId = selectedGestor.id;
+    handleMenuClose();
+    toast.info("Gerando relatório, por favor aguarde...");
+
+    try {
+      const res = await fetchWithAuth(`/api/gestor/${gestorId}/report`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      const { gestor, logs } = data;
+      const doc = new jsPDF();
+
+      doc.setFontSize(20);
+      doc.text(`Relatório do Gestor: ${gestor.nome}`, 14, 22);
+      doc.setFontSize(12);
+      doc.text(`ID: ${gestorId}`, 14, 35);
+      doc.text(`Email: ${gestor.email}`, 14, 42);
+      doc.text(`Status: ${gestor.ativo ? "Ativo" : "Inativo"}`, 14, 49);
+      doc.text(
+        `Membro desde: ${new Date(gestor.createdAt).toLocaleDateString(
+          "pt-BR"
+        )}`,
+        14,
+        56
+      );
+
+      autoTable(doc, {
+        startY: 70,
+        head: [["Data", "Ação", "Autor", "Detalhes"]],
+        body: logs.map((log) => [
+          new Date(log.createdAt).toLocaleString("pt-BR"),
+          log.action.replace(/_/g, " "),
+          log.authorName || "N/A",
+          log.details || "",
+        ]),
+        theme: "striped",
+        headStyles: { fillColor: [22, 160, 133] },
       });
-  }, [refresh, currentPage, search, sortConfig]);
 
-  const openEdit = (gestor: Gestor) => {
-    setEditGestor(gestor);
-    setEditNome(gestor.nome);
-    setEditEmail(gestor.email);
-    setEditSenha("");
-    setEditAvatarFile(null);
-    setEditPreview(
-      gestor.avatarUrl
-        ? `${serverUrl}/${gestor.avatarUrl.replace(/\\/g, "/")}`
-        : null
-    );
-  };
-
-  const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    if (file) {
-      setEditAvatarFile(file);
-      if (editPreview && editPreview.startsWith("blob:")) {
-        URL.revokeObjectURL(editPreview);
-      }
-      setEditPreview(URL.createObjectURL(file));
+      doc.save(
+        `relatorio_${gestor.nome.replace(/\s/g, "_")}_${
+          new Date().toISOString().split("T")[0]
+        }.pdf`
+      );
+    } catch (error) {
+      toast.error(error.message || "Não foi possível gerar o relatório.");
     }
   };
 
-  const handleEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editGestor) return;
-
-    const formData = new FormData();
-    formData.append("nome", editNome);
-    formData.append("email", editEmail);
-    if (editSenha) {
-      formData.append("senha", editSenha);
+  const handleSelectAllClick = (event) => {
+    if (event.target.checked) {
+      const newSelectedIds = gestores.map((n) => n.id);
+      setSelectedIds(newSelectedIds);
+      return;
     }
-    if (editAvatarFile) {
-      formData.append("avatar", editAvatarFile);
+    setSelectedIds([]);
+  };
+  const handleSelectClick = (event, id) => {
+    const selectedIndex = selectedIds.indexOf(id);
+    let newSelected = [];
+    if (selectedIndex === -1) {
+      newSelected = newSelected.concat(selectedIds, id);
+    } else if (selectedIndex === 0) {
+      newSelected = newSelected.concat(selectedIds.slice(1));
+    } else if (selectedIndex === selectedIds.length - 1) {
+      newSelected = newSelected.concat(selectedIds.slice(0, -1));
+    } else if (selectedIndex > 0) {
+      newSelected = newSelected.concat(
+        selectedIds.slice(0, selectedIndex),
+        selectedIds.slice(selectedIndex + 1)
+      );
     }
-
-    const res = await fetch(`/api/gestor/${editGestor.id}`, {
-      method: "PUT",
-      body: formData,
+    setSelectedIds(newSelected);
+  };
+  const isSelected = (id) => selectedIds.indexOf(id) !== -1;
+  const handleMenuClick = (event, gestor) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedGestor(gestor);
+  };
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedGestor(null);
+  };
+  const handleActionClick = (type, data) => {
+    setDialogState({ open: true, type, data: data || selectedGestor });
+    handleMenuClose();
+  };
+  const closeConfirmationDialog = () => {
+    setDialogState({ open: false, type: null, data: null });
+  };
+  const handleActivityLogOpen = async () => {
+    if (!selectedGestor) return;
+    setActivityLogState({
+      open: true,
+      loading: true,
+      logs: [],
+      gestorName: selectedGestor.nome,
     });
-
-    const data = await res.json();
-    if (res.ok) {
-      toast.success("Gestor atualizado com sucesso!");
-      setEditGestor(null);
-      setEditPreview(null);
-      onAction();
-    } else {
-      toast.error(data.error || "Erro ao atualizar gestor.");
+    handleMenuClose();
+    try {
+      const res = await fetchWithAuth(
+        `/api/audit-logs?targetId=${selectedGestor.id}`
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setActivityLogState((prev) => ({ ...prev, logs: data, loading: false }));
+    } catch (error) {
+      toast.error(error.message || "Erro ao buscar histórico de atividades.");
+      setActivityLogState({
+        open: false,
+        loading: false,
+        logs: [],
+        gestorName: "",
+      });
     }
   };
-
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Tem certeza que deseja deletar este gestor?")) return;
-    const res = await fetch(`/api/gestor/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      toast.success("Gestor deletado com sucesso!");
-      onAction();
-    } else {
+  const handleActivityLogClose = () =>
+    setActivityLogState({
+      open: false,
+      loading: false,
+      logs: [],
+      gestorName: "",
+    });
+  const executeBulkDelete = async () => {
+    try {
+      const res = await fetchWithAuth("/api/gestor/bulk/delete", {
+        method: "POST",
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(data.message);
+      onActionComplete();
+    } catch (error) {
+      toast.error(error.message || "Erro ao deletar em massa.");
+    } finally {
+      closeConfirmationDialog();
+    }
+  };
+  const executeBulkUpdateStatus = async (status) => {
+    try {
+      const res = await fetchWithAuth("/api/gestor/bulk/status", {
+        method: "POST",
+        body: JSON.stringify({ ids: selectedIds, status }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(data.message);
+      onActionComplete();
+    } catch (error) {
+      toast.error(error.message || "Erro ao atualizar status em massa.");
+    } finally {
+      closeConfirmationDialog();
+    }
+  };
+  const executeDelete = async () => {
+    if (!dialogState.data) return;
+    try {
+      await fetchWithAuth(`/api/gestor/${dialogState.data.id}`, {
+        method: "DELETE",
+      });
+      toast.success("Gestor deletado!");
+      onActionComplete();
+    } catch {
       toast.error("Erro ao deletar gestor.");
+    } finally {
+      closeConfirmationDialog();
     }
   };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value);
-    setCurrentPage(1);
-  };
-
-  const handleToggleStatus = async (id: number) => {
-    if (
-      !window.confirm("Tem certeza que deseja alterar o status deste gestor?")
-    )
-      return;
-    const res = await fetch(`/api/gestor/${id}/status`, { method: "PATCH" });
-    const data = await res.json();
-    if (res.ok) {
+  const executeToggleStatus = async () => {
+    if (!dialogState.data) return;
+    try {
+      const res = await fetchWithAuth(
+        `/api/gestor/${dialogState.data.id}/status`,
+        { method: "PATCH" }
+      );
+      const data = await res.json();
       toast.success(data.message);
-      onAction();
-    } else {
-      toast.error(data.error || "Erro ao alterar o status.");
+      onActionComplete();
+    } catch {
+      toast.error("Erro ao alterar status.");
+    } finally {
+      closeConfirmationDialog();
     }
   };
-
-  const handleResetPassword = async (gestor: Gestor) => {
-    if (
-      !window.confirm(
-        `Tem certeza que deseja resetar a senha do gestor ${gestor.nome}? Uma nova senha será gerada.`
-      )
-    )
-      return;
-    const res = await fetch(`/api/gestor/${gestor.id}/reset-senha`, {
-      method: "POST",
-    });
-    const data = await res.json();
-    if (res.ok) {
+  const executeResetPassword = async () => {
+    if (!dialogState.data) return;
+    try {
+      const res = await fetchWithAuth(
+        `/api/gestor/${dialogState.data.id}/reset-senha`,
+        { method: "POST" }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
       toast.success(data.message);
-      setNewPasswordInfo({ gestorNome: gestor.nome, pass: data.newPassword });
-    } else {
-      toast.error(data.error || "Erro ao resetar a senha.");
+      setNewPasswordInfo({
+        open: true,
+        nome: dialogState.data.nome,
+        pass: data.newPassword,
+      });
+    } catch (error) {
+      toast.error(error.message || "Erro ao resetar a senha.");
+    } finally {
+      closeConfirmationDialog();
     }
   };
-
-  const requestSort = (key: string) => {
-    let direction = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
+  const dialogActions = {
+    delete: executeDelete,
+    status: executeToggleStatus,
+    reset: executeResetPassword,
+    "bulk-delete": executeBulkDelete,
+    "bulk-activate": () => executeBulkUpdateStatus(true),
+    "bulk-deactivate": () => executeBulkUpdateStatus(false),
   };
-
-  const getSortIndicator = (key: string) => {
-    if (sortConfig.key !== key) return null;
-    return sortConfig.direction === "asc" ? " ▲" : " ▼";
-  };
+  const headCells = [
+    { id: "nome", label: "Gestor" },
+    { id: "email", label: "Email" },
+    { id: "ativo", label: "Status" },
+    { id: "createdAt", label: "Criado em" },
+  ];
 
   return (
-    <div className={styles.listContainer}>
-      <div className={styles.header}>
-        <h2>Gestores Cadastrados</h2>
-        <input
-          type="text"
-          placeholder="Buscar por nome ou email..."
-          value={search}
-          onChange={handleSearchChange}
-          className={styles.searchInput}
+    <>
+      <Paper sx={{ width: "100%", mb: 2 }}>
+        {selectedIds.length > 0 ? (
+          <Toolbar
+            sx={{
+              pl: { sm: 2 },
+              pr: { xs: 1, sm: 1 },
+              bgcolor: (theme) =>
+                alpha(
+                  theme.palette.primary.main,
+                  theme.palette.action.activatedOpacity
+                ),
+            }}
+          >
+            <Typography
+              sx={{ flex: "1 1 100%" }}
+              color="inherit"
+              variant="subtitle1"
+              component="div"
+            >
+              {selectedIds.length} selecionado(s)
+            </Typography>
+            <Tooltip title="Ativar">
+              <IconButton onClick={() => handleActionClick("bulk-activate")}>
+                <ToggleOnIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Desativar">
+              <IconButton onClick={() => handleActionClick("bulk-deactivate")}>
+                <ToggleOffIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Deletar">
+              <IconButton onClick={() => handleActionClick("bulk-delete")}>
+                <DeleteSweepIcon />
+              </IconButton>
+            </Tooltip>
+          </Toolbar>
+        ) : (
+          <Box
+            sx={{
+              p: 2,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 2,
+            }}
+          >
+            <TextField
+              variant="outlined"
+              placeholder="Buscar..."
+              sx={{ flexGrow: 1, minWidth: "300px" }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(0);
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <ToggleButtonGroup
+              color="primary"
+              value={statusFilter}
+              exclusive
+              onChange={(e, val) => val && setStatusFilter(val)}
+            >
+              <ToggleButton value="todos">Todos</ToggleButton>
+              <ToggleButton value="ativo">Ativos</ToggleButton>
+              <ToggleButton value="inativo">Inativos</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+        )}
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    color="primary"
+                    indeterminate={
+                      selectedIds.length > 0 &&
+                      selectedIds.length < gestores.length
+                    }
+                    checked={
+                      gestores.length > 0 &&
+                      selectedIds.length === gestores.length
+                    }
+                    onChange={handleSelectAllClick}
+                  />
+                </TableCell>
+                {headCells.map((headCell) => (
+                  <TableCell
+                    key={headCell.id}
+                    sortDirection={orderBy === headCell.id ? order : false}
+                  >
+                    {" "}
+                    <TableSortLabel
+                      active={orderBy === headCell.id}
+                      direction={orderBy === headCell.id ? order : "asc"}
+                      onClick={() => setOrderBy(headCell.id)}
+                    >
+                      {" "}
+                      {headCell.label}{" "}
+                    </TableSortLabel>{" "}
+                  </TableCell>
+                ))}
+                <TableCell align="right">Ações</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    <CircularProgress />
+                  </TableCell>
+                </TableRow>
+              ) : (
+                gestores.map((gestor) => {
+                  const isItemSelected = isSelected(gestor.id);
+                  return (
+                    <TableRow
+                      hover
+                      role="checkbox"
+                      aria-checked={isItemSelected}
+                      tabIndex={-1}
+                      key={gestor.id}
+                      selected={isItemSelected}
+                    >
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          color="primary"
+                          checked={isItemSelected}
+                          onClick={(event) =>
+                            handleSelectClick(event, gestor.id)
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: "flex", alignItems: "center" }}>
+                          {" "}
+                          <Avatar
+                            variant="square"
+                            src={
+                              gestor.avatarUrl
+                                ? `${SERVER_URL}/${gestor.avatarUrl}`
+                                : undefined
+                            }
+                            sx={{ width: 56, height: 56, mr: 2 }}
+                          >
+                            {" "}
+                            {!gestor.avatarUrl && <PersonIcon />}{" "}
+                          </Avatar>{" "}
+                          <Typography variant="body2" fontWeight="bold">
+                            {gestor.nome}
+                          </Typography>{" "}
+                        </Box>
+                      </TableCell>
+                      <TableCell>{gestor.email}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={gestor.ativo ? "Ativo" : "Inativo"}
+                          color={gestor.ativo ? "success" : "default"}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {new Date(gestor.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell align="right">
+                        <IconButton onClick={(e) => handleMenuClick(e, gestor)}>
+                          <MoreVertIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={totalRows}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={(e, p) => setPage(p)}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+          labelRowsPerPage="Itens por página:"
         />
-      </div>
 
-      {loading ? (
-        <p>Carregando...</p>
-      ) : (
-        <>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.avatarColumn}>Avatar</th>
-                <th onClick={() => requestSort("id")}>
-                  ID{getSortIndicator("id")}
-                </th>
-                <th onClick={() => requestSort("nome")}>
-                  Nome{getSortIndicator("nome")}
-                </th>
-                <th onClick={() => requestSort("email")}>
-                  Email{getSortIndicator("email")}
-                </th>
-                <th onClick={() => requestSort("ativo")}>
-                  Status{getSortIndicator("ativo")}
-                </th>
-                <th onClick={() => requestSort("createdAt")}>
-                  Criado em{getSortIndicator("createdAt")}
-                </th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {gestores.map((g) => (
-                <tr key={g.id}>
-                  <td>
-                    <img
-                      src={
-                        g.avatarUrl
-                          ? `${serverUrl}/${g.avatarUrl.replace(/\\/g, "/")}`
-                          : "/default-avatar.png"
-                      }
-                      alt={`Avatar de ${g.nome}`}
-                      className={styles.avatarImage}
-                    />
-                  </td>
-                  <td>{g.id}</td>
-                  <td>{g.nome}</td>
-                  <td>{g.email}</td>
-                  <td>
-                    <span
-                      className={
-                        g.ativo ? styles.statusAtivo : styles.statusInativo
-                      }
-                    >
-                      {g.ativo ? "Ativo" : "Inativo"}
-                    </span>
-                  </td>
-                  <td>{new Date(g.createdAt).toLocaleDateString()}</td>
-                  <td className={styles.actionsCell}>
-                    <button
-                      className={styles.editBtn}
-                      onClick={() => openEdit(g)}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      className={
-                        g.ativo ? styles.deactivateBtn : styles.activateBtn
-                      }
-                      onClick={() => handleToggleStatus(g.id)}
-                    >
-                      {g.ativo ? "Desativar" : "Ativar"}
-                    </button>
-                    <button
-                      className={styles.resetBtn}
-                      onClick={() => handleResetPassword(g)}
-                    >
-                      Resetar Senha
-                    </button>
-                    <button
-                      className={styles.deleteBtn}
-                      onClick={() => handleDelete(g.id)}
-                    >
-                      Deletar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+        >
+          <MenuItem
+            onClick={() => {
+              onEdit(selectedGestor);
+              handleMenuClose();
+            }}
+          >
+            <ListItemIcon>
+              <EditIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Editar</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={handleActivityLogOpen}>
+            <ListItemIcon>
+              <HistoryIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Ver Atividade</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={() => handleActionClick("status")}>
+            <ListItemIcon>
+              {selectedGestor?.ativo ? (
+                <ToggleOffIcon fontSize="small" />
+              ) : (
+                <ToggleOnIcon fontSize="small" />
+              )}
+            </ListItemIcon>
+            <ListItemText>
+              {selectedGestor?.ativo ? "Desativar" : "Ativar"}
+            </ListItemText>
+          </MenuItem>
+          <MenuItem onClick={() => handleActionClick("reset")}>
+            <ListItemIcon>
+              <LockResetIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Resetar Senha</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={handleGenerateReport}>
+            <ListItemIcon>
+              <SummarizeIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Gerar Relatório</ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => handleActionClick("delete")}
+            sx={{ color: "error.main" }}
+          >
+            <ListItemIcon>
+              <DeleteIcon fontSize="small" color="error" />
+            </ListItemIcon>
+            <ListItemText>Deletar</ListItemText>
+          </MenuItem>
+        </Menu>
+      </Paper>
 
-          <div className={styles.pagination}>
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              Anterior
-            </button>
-            <span>
-              Página {currentPage} de {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-              disabled={currentPage === totalPages}
-            >
-              Próxima
-            </button>
-          </div>
-        </>
-      )}
+      <Dialog open={dialogState.open} onClose={closeConfirmationDialog}>
+        <DialogTitle>Confirmar Ação</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {dialogState.type === "delete" &&
+              `Tem certeza que deseja deletar o gestor "${dialogState.data?.nome}"?`}
+            {dialogState.type === "status" &&
+              `Tem certeza que deseja ${
+                dialogState.data?.ativo ? "desativar" : "ativar"
+              } o gestor "${dialogState.data?.nome}"?`}
+            {dialogState.type === "reset" &&
+              `Tem certeza que deseja gerar uma nova senha para o gestor "${dialogState.data?.nome}"?`}
+            {dialogState.type === "bulk-delete" &&
+              `Tem certeza que deseja deletar os ${selectedIds.length} gestores selecionados?`}
+            {dialogState.type === "bulk-activate" &&
+              `Tem certeza que deseja ativar os ${selectedIds.length} gestores selecionados?`}
+            {dialogState.type === "bulk-deactivate" &&
+              `Tem certeza que deseja desativar os ${selectedIds.length} gestores selecionados?`}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeConfirmationDialog}>Cancelar</Button>
+          <Button
+            onClick={
+              dialogState.type ? dialogActions[dialogState.type] : undefined
+            }
+            color="primary"
+            autoFocus
+          >
+            Confirmar
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-      {editGestor && (
-        <div className={styles.modal}>
-          <form className={styles.editForm} onSubmit={handleEdit}>
-            <h3>Editar Gestor</h3>
-            <div className={styles.avatarUpload}>
-              <input
-                type="file"
-                accept="image/*"
-                ref={editFileInputRef}
-                onChange={handleEditFileChange}
-                style={{ display: "none" }}
-              />
-              <div
-                className={styles.avatarPreview}
-                onClick={() => editFileInputRef.current?.click()}
-              >
-                {editPreview ? (
-                  <img src={editPreview} alt="Pré-visualização do Avatar" />
-                ) : (
-                  <span>
-                    +<br />
-                    Alterar Foto
-                  </span>
-                )}
-              </div>
-            </div>
-            <input
-              type="text"
-              value={editNome}
-              onChange={(e) => setEditNome(e.target.value)}
-              placeholder="Nome"
-              required
-            />
-            <input
-              type="email"
-              value={editEmail}
-              onChange={(e) => setEditEmail(e.target.value)}
-              placeholder="Email"
-              required
-            />
-            <input
-              type="password"
-              value={editSenha}
-              onChange={(e) => setEditSenha(e.target.value)}
-              placeholder="Nova senha (deixe em branco para não alterar)"
-            />
-            <div className={styles.modalActions}>
-              <button type="submit">Salvar Alterações</button>
-              <button type="button" onClick={() => setEditGestor(null)}>
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      <Dialog
+        open={newPasswordInfo.open}
+        onClose={() => setNewPasswordInfo({ ...newPasswordInfo, open: false })}
+      >
+        <DialogTitle>Nova Senha Gerada</DialogTitle>
+        <DialogContent>
+          <DialogContentText mb={2}>
+            A nova senha para <strong>{newPasswordInfo.nome}</strong> é:
+          </DialogContentText>
+          <Typography
+            variant="h6"
+            component="div"
+            sx={{
+              p: 2,
+              backgroundColor: "grey.200",
+              borderRadius: 1,
+              textAlign: "center",
+              fontFamily: "monospace",
+              wordBreak: "break-all",
+            }}
+          >
+            {" "}
+            {newPasswordInfo.pass}{" "}
+          </Typography>
+          <DialogContentText mt={2} color="error" variant="body2">
+            Anote esta senha em um local seguro. Ela não será exibida novamente.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() =>
+              setNewPasswordInfo({ ...newPasswordInfo, open: false })
+            }
+            autoFocus
+          >
+            Fechar
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-      {newPasswordInfo && (
-        <div className={styles.modal}>
-          <div className={styles.passwordModal}>
-            <h3>Senha Resetada</h3>
-            <p>
-              A nova senha para <strong>{newPasswordInfo.gestorNome}</strong> é:
-            </p>
-            <div className={styles.newPasswordBox}>{newPasswordInfo.pass}</div>
-            <p className={styles.passwordWarning}>
-              Anote a senha. Ela não será exibida novamente.
-            </p>
-            <button onClick={() => setNewPasswordInfo(null)}>Fechar</button>
-          </div>
-        </div>
-      )}
-    </div>
+      <Dialog
+        open={activityLogState.open}
+        onClose={handleActivityLogClose}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>
+          Histórico de Atividade: {activityLogState.gestorName}
+        </DialogTitle>
+        <DialogContent dividers>
+          {activityLogState.loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Timeline position="alternate">
+              {activityLogState.logs.length === 0 ? (
+                <Typography sx={{ p: 2, textAlign: "center" }}>
+                  Nenhuma atividade registrada para este usuário.
+                </Typography>
+              ) : (
+                activityLogState.logs.map((log) => (
+                  <TimelineItem key={log.id}>
+                    <TimelineOppositeContent
+                      color="text.secondary"
+                      sx={{ m: "auto 0" }}
+                      align="right"
+                      variant="body2"
+                    >
+                      {" "}
+                      {new Date(log.createdAt).toLocaleString("pt-BR")}{" "}
+                    </TimelineOppositeContent>
+                    <TimelineSeparator>
+                      {" "}
+                      <TimelineConnector />{" "}
+                      <TimelineDot color="primary">
+                        <HistoryIcon />
+                      </TimelineDot>{" "}
+                      <TimelineConnector />{" "}
+                    </TimelineSeparator>
+                    <TimelineContent sx={{ py: "12px", px: 2 }}>
+                      <Typography variant="h6" component="span">
+                        {log.action.replace(/_/g, " ")}
+                      </Typography>
+                      <Typography>
+                        por: <strong>{log.authorName}</strong>
+                      </Typography>
+                      {log.details && (
+                        <Typography variant="body2" color="text.secondary">
+                          Detalhes: {log.details}
+                        </Typography>
+                      )}
+                    </TimelineContent>
+                  </TimelineItem>
+                ))
+              )}
+            </Timeline>
+          )}
+        </DialogContent>
+        <DialogActions>
+          {" "}
+          <Button onClick={handleActivityLogClose}>Fechar</Button>{" "}
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }

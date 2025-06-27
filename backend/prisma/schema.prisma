@@ -59,3 +59,16 @@ model Gestor {
   ativo     Boolean  @default(true) 
   avatarUrl String?
 }
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  action      String   
+  details     String?  
+  targetId    Int     
+  targetType  String   @default("GESTOR") 
+  authorId    Int?     
+  authorName  String? 
+  createdAt   DateTime @default(now())
+
+  @@index([targetId, targetType])
+}
