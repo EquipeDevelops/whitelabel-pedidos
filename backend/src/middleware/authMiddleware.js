@@ -33,6 +33,8 @@ export function verificarPermissao(...Permissoes) {
         .json({ error: "Você não tem permissão para acessar este recurso." });
     }
 
+    console.log("Verificando permissões do usuário:", req.usuario.tipo);
+
     if (!Permissoes.includes(req.usuario.tipo)) {
       return res.status(403).json({
         error: "Você não tem permissão para acessar este recurso.",

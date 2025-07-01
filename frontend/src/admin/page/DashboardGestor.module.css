@@ -1,0 +1,56 @@
+:root {
+  --c-primary: #3b82f6;
+  --c-primary-hover: #2563eb;
+  --c-primary-light: #eff6ff;
+  --c-danger: #ef4444;
+  --c-danger-hover: #dc2626;
+  --c-danger-light: #fee2e2;
+  --c-success: #22c55e;
+  --c-success-hover: #16a34a;
+  --c-success-light: #dcfce7;
+  --c-warning: #f97316;
+  --c-warning-hover: #ea580c;
+  --c-warning-light: #ffedd5;
+
+  --c-text-header: #111827;
+  --c-text-body: #374151;
+  --c-text-secondary: #6b7280;
+  --c-border: #e5e7eb;
+  --c-background-page: #f9fafb;
+  --c-background-component: #ffffff;
+  --c-focus-ring: rgba(59, 130, 246, 0.4);
+
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fs-base: 16px;
+  --lh-base: 1.5;
+
+  --border-radius-sm: 4px;
+  --border-radius-md: 6px;
+  --border-radius-lg: 8px;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dashboard {
+  max-width: 1440px;
+  margin: 40px auto;
+  padding: clamp(24px, 4vw, 40px);
+  background-color: var(--c-background-page);
+  font-family: var(--font-sans);
+  color: var(--c-text-body);
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.dashboard h1 {
+  font-size: clamp(1.8rem, 4vw, 2.25rem);
+  font-weight: 700;
+  color: var(--c-text-header);
+  letter-spacing: -0.03em;
+  margin: 0;
+}
