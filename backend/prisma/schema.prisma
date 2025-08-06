@@ -7,46 +7,70 @@ datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
+
 model Funcionario {
-  id        Int       @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   nome      String
-  email     String    @unique
+  email     String   @unique
   senha     String
-  pedidos   Pedido[]  
-  criadoEm  DateTime  @default(now())
+  pedidos   Pedido[] 
+  criadoEm  DateTime @default(now())
 }
 
 model Cliente {
-  id        Int       @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   nome      String
-  email     String    @unique
-  pedidos   Pedido[]  
-  criadoEm  DateTime  @default(now())
+  email     String   @unique
+  senha     String
+  pedidos   Pedido[]
+  criadoEm  DateTime @default(now())
 }
 
 model Pedido {
-  id            Int         @id @default(autoincrement())
-  descricao     String
-  status        Status      @default(PENDENTE)
-  cliente       Cliente     @relation(fields: [clienteId], references: [id])
+  id            Int            @id @default(autoincrement())
+  status        Status         @default(PENDENTE)
+  cliente       Cliente        @relation(fields: [clienteId], references: [id])
   clienteId     Int
-  funcionario   Funcionario? @relation(fields: [funcionarioId], references: [id])
+  funcionario   Funcionario?   @relation(fields: [funcionarioId], references: [id])
   funcionarioId Int?
-  criadoEm      DateTime    @default(now())
+  criadoEm      DateTime       @default(now())
+  itens         ItemPedido[]
+  avaliacao     Avaliacao?
 }
 
 model Produto {
-  id          Int       @id @default(autoincrement())
+  id          Int            @id @default(autoincrement())
   nome        String
   preco       Float
   descricao   String?
-  criadoEm    DateTime  @default(now())
+  estoque     Int            @default(0)
+  criadoEm    DateTime       @default(now())
+  itens       ItemPedido[]
+}
+
+model ItemPedido {
+  id          Int      @id @default(autoincrement())
+  quantidade  Int
+  pedido      Pedido   @relation(fields: [pedidoId], references: [id])
+  pedidoId    Int
+  produto     Produto  @relation(fields: [produtoId], references: [id])
+  produtoId   Int
+}
+
+model Avaliacao {
+  id          Int      @id @default(autoincrement())
+  nota        Int      @default(0)
+  comentario  String?
+  criadoEm    DateTime @default(now())
+  pedido      Pedido   @relation(fields: [pedidoId], references: [id])
+  pedidoId    Int      @unique
 }
 
 enum Status {
   PENDENTE
   ACEITO
   RECUSADO
+  ENTREGUE
 }
 
 model Gestor {
@@ -64,10 +88,10 @@ model AuditLog {
   id          Int      @id @default(autoincrement())
   action      String   
   details     String?  
-  targetId    Int     
+  targetId    Int      
   targetType  String   @default("GESTOR") 
   authorId    Int?     
-  authorName  String? 
+  authorName  String?  
   createdAt   DateTime @default(now())
 
   @@index([targetId, targetType])

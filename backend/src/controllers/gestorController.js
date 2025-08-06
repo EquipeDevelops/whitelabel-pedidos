@@ -5,6 +5,98 @@ import { logAction } from "../services/auditLogService.js";
 
 const prisma = new PrismaClient();
 
+export const getMyProfile = async (req, res) => {
+  try {
+    const userId = req.usuario.id;
+    const gestor = await prisma.gestor.findUnique({
+      where: { id: userId },
+      select: { nome: true, email: true, avatarUrl: true },
+    });
+    if (!gestor) {
+      return res.status(404).json({ error: "Usuário não encontrado." });
+    }
+    res.json(gestor);
+  } catch (error) {
+    console.error("Erro ao buscar perfil do gestor:", error);
+    res.status(500).json({ error: "Erro ao buscar perfil." });
+  }
+};
+
+export const updateMyProfile = async (req, res) => {
+  try {
+    const userId = req.usuario.id;
+    const { nome, email } = req.body;
+    const avatarPath = req.file
+      ? req.file.path.replace(/\\/g, "/").replace("public/", "")
+      : undefined;
+
+    const updatedData = {};
+    if (nome) updatedData.nome = nome;
+    if (email) updatedData.email = email;
+    if (avatarPath) updatedData.avatarUrl = avatarPath;
+
+    const updatedGestor = await prisma.gestor.update({
+      where: { id: userId },
+      data: updatedData,
+      select: { nome: true, email: true, avatarUrl: true },
+    });
+
+    await logAction({
+      action: "SELF_PROFILE_UPDATE",
+      targetId: userId,
+      author: req.usuario,
+      details: "Perfil pessoal atualizado."
+    });
+    res.json(updatedGestor);
+  } catch (error) {
+    console.error("Erro ao atualizar perfil do gestor:", error);
+    if (error.code === "P2002") {
+      return res.status(409).json({ error: "Este e-mail já está em uso por outro usuário." });
+    }
+    res.status(500).json({ error: "Erro ao atualizar perfil." });
+  }
+};
+
+export const updateMyPassword = async (req, res) => {
+  try {
+    const userId = req.usuario.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword || newPassword.length < 6) {
+      return res.status(400).json({
+        error: "Forneça a senha atual e uma nova senha com no mínimo 6 caracteres.",
+      });
+    }
+
+    const gestor = await prisma.gestor.findUnique({ where: { id: userId } });
+    if (!gestor) {
+      return res.status(404).json({ error: "Usuário não encontrado." });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, gestor.senha);
+    if (!isMatch) {
+      return res.status(401).json({ error: "A senha atual está incorreta." });
+    }
+
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    await prisma.gestor.update({
+      where: { id: userId },
+      data: { senha: newPasswordHash },
+    });
+
+    await logAction({
+      action: "SELF_PASSWORD_UPDATE",
+      targetId: userId,
+      author: req.usuario,
+      details: "Senha pessoal alterada."
+    });
+    res.json({ message: "Senha alterada com sucesso." });
+  } catch (error) {
+    console.error("Erro ao alterar senha do gestor:", error);
+    res.status(500).json({ error: "Erro ao alterar a senha." });
+  }
+};
+
 export const getGestorStats = async (req, res) => {
   try {
     const totalGestores = await prisma.gestor.count();
@@ -20,9 +112,11 @@ export const getGestorStats = async (req, res) => {
       inativos: gestoresInativos,
     });
   } catch (error) {
+    console.error("Erro ao buscar estatísticas dos gestores:", error);
     res.status(500).json({ error: "Erro ao buscar estatísticas dos gestores" });
   }
 };
+
 export const listarGestores = async (req, res) => {
   const {
     page = 1,
@@ -33,6 +127,7 @@ export const listarGestores = async (req, res) => {
     status,
   } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(limit);
+
   try {
     const where = {};
     if (search) {
@@ -46,7 +141,9 @@ export const listarGestores = async (req, res) => {
     } else if (status === "inativo") {
       where.ativo = false;
     }
+
     const orderBy = { [sortBy]: sortOrder };
+
     const gestores = await prisma.gestor.findMany({
       where,
       select: {
@@ -61,7 +158,9 @@ export const listarGestores = async (req, res) => {
       take: parseInt(limit),
       orderBy,
     });
+
     const totalGestores = await prisma.gestor.count({ where });
+
     res.json({
       data: gestores,
       totalGestores,
@@ -69,9 +168,11 @@ export const listarGestores = async (req, res) => {
       currentPage: parseInt(page),
     });
   } catch (error) {
+    console.error("Erro ao buscar gestores:", error);
     res.status(500).json({ error: "Erro ao buscar gestores" });
   }
 };
+
 export const buscarGestorPorId = async (req, res) => {
   const { id } = req.params;
   try {
@@ -91,90 +192,107 @@ export const buscarGestorPorId = async (req, res) => {
     }
     res.json(gestor);
   } catch (error) {
+    console.error("Erro ao buscar gestor por ID:", error);
     res.status(500).json({ error: "Erro ao buscar o gestor" });
   }
 };
+
 export const criarGestor = async (req, res) => {
   const { nome, email, senha } = req.body;
   const avatarPath = req.file
     ? req.file.path.replace(/\\/g, "/").replace("public/", "")
     : null;
+
   if (!nome || !email || !senha) {
     return res.status(400).json({ error: "Preencha todos os campos." });
   }
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     return res.status(400).json({ error: "Formato de e-mail inválido." });
   }
+
   if (senha.length < 6) {
     return res
       .status(400)
       .json({ error: "A senha deve ter pelo menos 6 caracteres." });
   }
+
   try {
     const senhaHash = await bcrypt.hash(senha, 10);
     const novoGestor = await prisma.gestor.create({
       data: { nome, email, senha: senhaHash, avatarUrl: avatarPath },
       select: { id: true, nome: true, email: true, avatarUrl: true },
     });
+
     await logAction({
       action: "GESTOR_CREATE",
       targetId: novoGestor.id,
       author: req.usuario,
+      details: `Novo gestor "${novoGestor.nome}" criado.`
     });
     return res.status(201).json(novoGestor);
   } catch (error) {
+    console.error("Erro ao criar gestor:", error);
     if (error.code === "P2002") {
       return res.status(409).json({ error: "Este e-mail já está em uso." });
     }
-    console.error("Erro ao criar gestor:", error);
     res.status(500).json({ error: "Erro interno ao criar gestor." });
   }
 };
+
 export const atualizarGestor = async (req, res) => {
   const { id } = req.params;
   const { nome, email } = req.body;
   const avatarPath = req.file
     ? req.file.path.replace(/\\/g, "/").replace("public/", "")
     : null;
+
   try {
     const atualizarDados = {};
     if (nome) atualizarDados.nome = nome;
     if (email) atualizarDados.email = email;
     if (avatarPath) atualizarDados.avatarUrl = avatarPath;
+
     if (Object.keys(atualizarDados).length === 0) {
       return res
         .status(400)
         .json({ error: "Nenhum dado para atualizar foi fornecido." });
     }
+
     const gestorAtualizado = await prisma.gestor.update({
       where: { id: parseInt(id) },
       data: atualizarDados,
       select: { id: true, nome: true, email: true, avatarUrl: true },
     });
+
     await logAction({
       action: "GESTOR_UPDATE",
       targetId: gestorAtualizado.id,
       author: req.usuario,
-      details: "Dados cadastrais atualizados.",
+      details: "Dados cadastrais atualizados."
     });
     res.json(gestorAtualizado);
   } catch (error) {
+    console.error("Erro ao atualizar gestor:", error);
     if (error.code === "P2002") {
       return res.status(409).json({ error: "Este e-mail já está em uso." });
     }
     res.status(500).json({ error: "Erro ao atualizar o gestor." });
   }
 };
+
 export const deletarGestor = async (req, res) => {
   const { id } = req.params;
   try {
     const gestor = await prisma.gestor.findUnique({
       where: { id: parseInt(id) },
     });
-    if (!gestor)
+    if (!gestor) {
       return res.status(404).json({ error: "Gestor não encontrado." });
+    }
     await prisma.gestor.delete({ where: { id: parseInt(id) } });
+
     await logAction({
       action: "GESTOR_DELETE",
       targetId: gestor.id,
@@ -183,9 +301,11 @@ export const deletarGestor = async (req, res) => {
     });
     res.json({ message: "Gestor deletado." });
   } catch (error) {
+    console.error("Erro ao deletar gestor:", error);
     res.status(500).json({ error: "Erro ao deletar gestor." });
   }
 };
+
 export const loginGestor = async (req, res) => {
   const { email, senha } = req.body;
   if (!email || !senha) {
@@ -218,9 +338,11 @@ export const loginGestor = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("Erro ao fazer login do gestor:", error);
     res.status(500).json({ error: "Erro ao fazer login do gestor" });
   }
 };
+
 export const alternarStatusGestor = async (req, res) => {
   const { id } = req.params;
   try {
@@ -247,9 +369,11 @@ export const alternarStatusGestor = async (req, res) => {
       gestor: gestorAtualizado,
     });
   } catch (error) {
+    console.error("Erro ao alterar status do gestor:", error);
     res.status(500).json({ error: "Erro ao alterar status do gestor." });
   }
 };
+
 export const resetarSenhaGestor = async (req, res) => {
   const { id } = req.params;
   try {
@@ -263,15 +387,18 @@ export const resetarSenhaGestor = async (req, res) => {
       action: "GESTOR_PASSWORD_RESET",
       targetId: parseInt(id),
       author: req.usuario,
+      details: "Senha resetada."
     });
     res.json({
       message: "Senha resetada com sucesso.",
-      newPassword: newPassword,
+      newPassword: newPassword, // Em um ambiente real, esta senha seria enviada por e-mail, não retornada na resposta.
     });
   } catch (error) {
+    console.error("Erro ao resetar senha do gestor:", error);
     res.status(500).json({ error: "Erro ao resetar a senha." });
   }
 };
+
 export const bulkUpdateStatus = async (req, res) => {
   const { ids, status } = req.body;
   if (
@@ -292,19 +419,19 @@ export const bulkUpdateStatus = async (req, res) => {
     const acao = status ? "ativados" : "desativados";
     await logAction({
       action: "GESTOR_BULK_STATUS_CHANGE",
-      targetId: 0,
+      targetId: 0, // 0 para indicar que não é um ID específico, mas uma ação em massa
       author: req.usuario,
-      details: `${result.count} gestores ${acao} em massa. IDs: ${ids.join(
-        ", "
-      )}`,
+      details: `${result.count} gestores ${acao} em massa. IDs: ${ids.join(", ")}`,
     });
     res.json({ message: `${result.count} gestores atualizados com sucesso.` });
   } catch (error) {
+    console.error("Erro ao atualizar status em massa dos gestores:", error);
     res
       .status(500)
       .json({ error: "Erro ao atualizar status dos gestores em massa." });
   }
 };
+
 export const bulkDelete = async (req, res) => {
   const { ids } = req.body;
   if (!ids || !Array.isArray(ids) || ids.length === 0) {
@@ -318,14 +445,13 @@ export const bulkDelete = async (req, res) => {
     });
     await logAction({
       action: "GESTOR_BULK_DELETE",
-      targetId: 0,
+      targetId: 0, // 0 para indicar que não é um ID específico, mas uma ação em massa
       author: req.usuario,
-      details: `${result.count} gestores deletados em massa. IDs: ${ids.join(
-        ", "
-      )}`,
+      details: `${result.count} gestores deletados em massa. IDs: ${ids.join(", ")}`,
     });
     res.json({ message: `${result.count} gestores deletados com sucesso.` });
   } catch (error) {
+    console.error("Erro ao deletar gestores em massa:", error);
     res.status(500).json({ error: "Erro ao deletar gestores em massa." });
   }
 };
@@ -351,6 +477,7 @@ export const getGestorReportData = async (req, res) => {
 
     res.json({ gestor, logs });
   } catch (error) {
+    console.error("Erro ao gerar dados para o relatório do gestor:", error);
     res.status(500).json({ error: "Erro ao gerar dados para o relatório." });
   }
 };
